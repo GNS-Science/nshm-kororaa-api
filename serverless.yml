@@ -1,0 +1,70 @@
+	
+# serverless.yml
+service: nshm-kororaa-api
+ 
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: ap-southeast-2
+
+plugins:
+  - serverless-offline
+
+custom:
+  # DRY constants: define all compound/generated names in one place
+  # Override args are: .. defaults:
+  # --app_acroym          signed-uploader
+  # --s3_bucket           self:custom.app_acronym
+  # --s3_key_base         self:custom.stage
+  # --region              us-east-1
+  # --stage               test
+  # --deletion_policy     delete
+
+  app_acronym: ${opt:acronym, self:service}
+  default_stage: dev
+  stage: ${opt:stage, self:custom.default_stage}
+  stack_name: ${self:custom.app_acronym}-${self:custom.stage}
+  region: ${opt:region, self:provider.region}
+  deletion_policy: Delete
+  # presigned URL TTL
+  url_default_ttl: 60
+
+  serverless-offline:
+    # httpsProtocol: "dev-certs"
+    httpPort: 4100
+    stageVariables:
+      foo: "bar"
+
+  apiGateway:
+    apiKeys:
+      - name: NSHMTempApiKey-${self:custom.stage}
+        description: Api key until we have an auth function # Optional
+
+functions:
+  app:
+    description: The graphql API of ${self:service} in ${self:custom.stage}
+    handler: server.handler
+    memorySize: 2096 # optional, in MB, default is 1024
+    timeout: 20 # optional, in seconds, default is 6
+    events:
+      - http:
+          path: /graphql
+          method: OPTIONS
+      - http:
+          path: /graphql
+          method: POST
+          private: true
+      - http:
+          path: /graphql
+          method: GET
+          private: true
+    environment:
+      STACK_NAME: ${self:custom.stack_name}
+      REGION: ${self:custom.region}
+      DEPLOYMENT_STAGE: ${self:custom.stage}
+      ENABLE_METRICS: ${env:ENABLE_METRICS, 0}
+      NZSHM22_KORORAA_API_URL: ${env:NZSHM22_KORORAA_API_URL}
+      NZSHM22_KORORAA_API_KEY: ${env:NZSHM22_KORORAA_API_KEY}
+      NZSHM22_TOSHI_API_URL: ${env:NZSHM22_TOSHI_API_URL}
+      NZSHM_TOSHI_GRAPHQL_API_KEY: ${env:NZSHM22_TOSHI_API_KEY}
